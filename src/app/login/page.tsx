@@ -51,7 +51,11 @@ export default function LoginPage() {
       >
         <div className="mb-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-192.png" alt="" className="mx-auto mb-3 h-14 w-14 rounded-xl shadow-md" />
+          <img
+            src="/saree-logo.png"
+            alt=""
+            className="mx-auto mb-3 h-32 w-32 rounded-full border-4 border-rose-100 object-cover shadow-md"
+          />
           <h1 className="text-2xl font-semibold text-rose-900">
             {process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sri Laxmi Narasimha Silk Sarees"}
           </h1>
