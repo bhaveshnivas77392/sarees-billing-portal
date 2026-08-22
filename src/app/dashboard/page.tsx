@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { LogoutButton } from "@/components/LogoutButton";
 import { RealtimeRefresher } from "@/components/RealtimeRefresher";
+import { TextilePattern } from "@/components/TextilePattern";
 
 // Always reads fresh DB state - this dashboard must never be statically cached.
 export const dynamic = "force-dynamic";
@@ -47,13 +48,18 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <RealtimeRefresher watch={[{ table: "stocks" }, { table: "sales" }]} />
-      <header className="border-b bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-400">
-              {process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sarees Billing Portal"}
-            </p>
-            <h1 className="text-lg font-semibold text-gray-900">Owner Dashboard</h1>
+      <header className="relative overflow-hidden bg-gradient-to-r from-rose-700 via-rose-600 to-amber-600 text-white shadow-sm">
+        <TextilePattern className="absolute inset-0 h-full w-full text-white/10" />
+        <div className="relative mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon-192.png" alt="" className="h-9 w-9 rounded-lg shadow" />
+            <div>
+              <p className="text-xs uppercase tracking-wide text-rose-100">
+                {process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sarees Billing Portal"}
+              </p>
+              <h1 className="text-lg font-semibold">Owner Dashboard</h1>
+            </div>
           </div>
           <LogoutButton />
         </div>
@@ -62,7 +68,10 @@ export default async function DashboardPage() {
       <main className="mx-auto max-w-5xl px-4 py-6">
         <div className="grid gap-4 md:grid-cols-3">
           {branchSummaries.map(({ branch, totalUnits, stockValue, lowStockCount, todaySalesTotal, todaySalesCount }) => (
-            <div key={branch.id} className="rounded-lg border bg-white p-5">
+            <div
+              key={branch.id}
+              className="rounded-lg border border-t-4 border-t-rose-500 bg-white p-5 shadow-sm transition hover:shadow-md"
+            >
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="font-semibold text-gray-900">{branch.name}</h2>
                 <Link href={`/branch/${branch.id}`} className="text-xs text-rose-600 hover:underline">
