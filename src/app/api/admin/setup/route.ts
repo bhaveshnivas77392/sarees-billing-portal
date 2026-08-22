@@ -164,6 +164,7 @@ export async function POST(request: Request) {
       const { data } = await supabaseAdmin.auth.admin.updateUserById(existing.id, { password, app_metadata: { role, branchId } });
       authUser = data.user;
     }
+    if (!authUser) throw new Error(`Could not create or update auth user ${email}`);
 
     await prisma.user.upsert({
       where: { id: authUser.id },
