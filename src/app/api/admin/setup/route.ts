@@ -143,7 +143,7 @@ export async function POST(request: Request) {
 
   async function upsertUser(email: string, name: string, role: string, branchId: string | null) {
     const password = randomPassword();
-    let created = null;
+    let authUser = null;
     try {
       const result = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -151,15 +151,19 @@ export async function POST(request: Request) {
         email_confirm: true,
         app_metadata: { role, branchId },
       });
-      created = result.data.user;
+      authUser = result.data.user;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (!message.toLowerCase().includes("already")) throw err;
     }
 
-    const authUser =
-      created ?? (await supabaseAdmin.auth.admin.listUsers()).data.users.find((u) => u.email === email);
-    if (!authUser) throw new Error(`Could not find or create auth user ${email}`);
+    if (!authUser) {
+      const existing = (await supabaseAdmin.auth.admin.listUsers()).data.users.find((u) => u.email === email);
+      if (!existing) throw new Error(`Could not find or create auth user ${email}`);
+      // Force-reset so we always hand back a known-working password, not a stale unknown one.
+      const { data } = await supabaseAdmin.auth.admin.updateUserById(existing.id, { password, app_metadata: { role, branchId } });
+      authUser = data.user;
+    }
 
     await prisma.user.upsert({
       where: { id: authUser.id },
@@ -167,7 +171,7 @@ export async function POST(request: Request) {
       create: { id: authUser.id, email, name, role: role as never, branchId },
     });
     // Only ever returned in this one-time HTTP response - never logged or stored.
-    return { email, password: created ? password : "(already existed - password unchanged)" };
+    return { email, password };
   }
 
   const branches = [];
