@@ -30,20 +30,22 @@ const BRANCHES = [
 
 async function upsertAuthUser(email: string, name: string, role: string, branchId: string | null) {
   const password = randomPassword();
-  const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    app_metadata: { role, branchId },
-  });
-
-  if (error && !error.message.includes("already registered")) {
-    throw error;
+  let created = null;
+  try {
+    const result = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      app_metadata: { role, branchId },
+    });
+    created = result.data.user;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!message.toLowerCase().includes("already")) throw err;
   }
 
   const authUser =
-    created?.user ??
-    (await supabaseAdmin.auth.admin.listUsers()).data.users.find((u) => u.email === email);
+    created ?? (await supabaseAdmin.auth.admin.listUsers()).data.users.find((u) => u.email === email);
 
   if (!authUser) throw new Error(`Could not find or create auth user ${email}`);
 
