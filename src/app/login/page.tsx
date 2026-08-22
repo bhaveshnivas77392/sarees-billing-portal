@@ -53,7 +53,7 @@ export default function LoginPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon-192.png" alt="" className="mx-auto mb-3 h-14 w-14 rounded-xl shadow-md" />
           <h1 className="text-2xl font-semibold text-rose-900">
-            {process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sarees Billing Portal"}
+            {process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sri Laxmi Narasimha Silk Sarees"}
           </h1>
           <p className="mt-1 text-sm text-gray-500">Sign in to continue</p>
         </div>

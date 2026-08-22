@@ -33,7 +33,7 @@ export default async function BranchLayout({
             <img src="/icon-192.png" alt="" className="h-9 w-9 rounded-lg shadow" />
             <div>
               <p className="text-xs uppercase tracking-wide text-rose-100">
-                {process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sarees Billing Portal"}
+                {process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sri Laxmi Narasimha Silk Sarees"}
               </p>
               <h1 className="text-lg font-semibold">{branch.name}</h1>
             </div>

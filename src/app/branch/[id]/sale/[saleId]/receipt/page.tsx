@@ -26,7 +26,7 @@ export default async function ReceiptPage({
 
       <div className="mx-auto max-w-sm rounded-lg border bg-white p-6 font-mono text-sm print:border-none">
         <p className="text-center text-base font-semibold">
-          {process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sarees Billing Portal"}
+          {process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sri Laxmi Narasimha Silk Sarees"}
         </p>
         <p className="text-center text-xs text-gray-500">{sale.branch.name}</p>
         <p className="mt-2 text-xs text-gray-500">

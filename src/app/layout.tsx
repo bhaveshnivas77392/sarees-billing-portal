@@ -14,14 +14,14 @@ const geistMono = Geist_Mono({
 
 // START GENAI
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sarees Billing Portal",
+  title: process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sri Laxmi Narasimha Silk Sarees",
   description: "Multi-branch saree inventory and billing portal",
   manifest: "/manifest.json",
   icons: { apple: "/apple-touch-icon.png" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sarees Billing Portal",
+    title: process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sri Laxmi Narasimha Silk Sarees",
   },
 };
 

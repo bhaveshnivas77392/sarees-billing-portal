@@ -23,7 +23,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <img src="/icon-192.png" alt="" className="h-9 w-9 rounded-lg shadow" />
             <div>
               <p className="text-xs uppercase tracking-wide text-rose-100">
-                {process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sarees Billing Portal"}
+                {process.env.NEXT_PUBLIC_SHOP_NAME ?? "Sri Laxmi Narasimha Silk Sarees"}
               </p>
               <h1 className="text-lg font-semibold">Owner Dashboard</h1>
             </div>
