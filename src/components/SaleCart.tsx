@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { checkout } from "@/lib/actions/billing";
 import { BarcodeCameraScanner } from "@/components/BarcodeCameraScanner";
+import { Spinner } from "@/components/Spinner";
+import { ExpandableImage } from "@/components/ExpandableImage";
 
 type CatalogItem = {
   sareeId: string;
@@ -162,8 +164,7 @@ export function SaleCart({ branchId, catalog }: { branchId: string; catalog: Cat
                 <tr key={l.sareeId}>
                   <td className="px-4 py-2">
                     {l.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={l.imageUrl} alt={l.name} className="h-12 w-12 rounded-md object-cover" />
+                      <ExpandableImage src={l.imageUrl} alt={l.name} className="h-12 w-12 rounded-md object-cover" />
                     ) : (
                       <div className="flex h-12 w-12 items-center justify-center rounded-md bg-gray-100 text-[10px] text-gray-400">
                         No photo
@@ -249,8 +250,9 @@ export function SaleCart({ branchId, catalog }: { branchId: string; catalog: Cat
         <button
           onClick={handleCheckout}
           disabled={cart.length === 0 || submitting}
-          className="w-full rounded-md bg-rose-600 px-4 py-2 font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-rose-600 px-4 py-2 font-medium text-white hover:bg-rose-700 disabled:opacity-50"
         >
+          {submitting && <Spinner />}
           {submitting ? "Processing..." : "Checkout & print bill"}
         </button>
       </div>

@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { registerUser } from "@/lib/actions/admin";
+import { Spinner } from "@/components/Spinner";
 
 function randomPassword() {
   return Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6).toUpperCase();
@@ -91,8 +92,9 @@ export function RegisterUserForm({ branches }: { branches: { id: string; name: s
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-md bg-rose-600 px-4 py-2 font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 rounded-md bg-rose-600 px-4 py-2 font-medium text-white hover:bg-rose-700 disabled:opacity-50"
       >
+        {submitting && <Spinner />}
         {submitting ? "Creating..." : "Create login"}
       </button>
     </form>

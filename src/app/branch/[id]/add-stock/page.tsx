@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { createSareeWithStock, addStockToExisting } from "@/lib/actions/inventory";
 import { ImageUploadField } from "@/components/ImageUploadField";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function AddStockPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: branchId } = await params;
@@ -25,9 +26,7 @@ export default async function AddStockPage({ params }: { params: Promise<{ id: s
             <Field label="Selling price" name="sellingPrice" type="number" step="0.01" required />
             <Field label="Quantity" name="quantity" type="number" defaultValue="1" required />
           </div>
-          <button className="w-full rounded-md bg-rose-600 px-4 py-2 font-medium text-white hover:bg-rose-700">
-            Create &amp; print barcode label
-          </button>
+          <SubmitButton pendingText="Creating...">Create &amp; print barcode label</SubmitButton>
         </form>
       </section>
 
@@ -48,9 +47,9 @@ export default async function AddStockPage({ params }: { params: Promise<{ id: s
             ))}
           </select>
           <Field label="Quantity received" name="quantity" type="number" defaultValue="1" required />
-          <button className="w-full rounded-md bg-gray-800 px-4 py-2 font-medium text-white hover:bg-gray-900">
+          <SubmitButton pendingText="Adding..." className="w-full rounded-md bg-gray-800 px-4 py-2 font-medium text-white hover:bg-gray-900 disabled:opacity-60">
             Add to stock
-          </button>
+          </SubmitButton>
         </form>
       </section>
     </div>

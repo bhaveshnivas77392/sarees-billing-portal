@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { RealtimeRefresher } from "@/components/RealtimeRefresher";
+import { ExpandableImage } from "@/components/ExpandableImage";
 
 const LOW_STOCK_THRESHOLD = 3;
 
@@ -64,8 +65,7 @@ export default async function BranchStockPage({
               <tr key={s.id} className={s.quantity <= LOW_STOCK_THRESHOLD ? "bg-amber-50" : ""}>
                 <td className="px-4 py-2">
                   {s.saree.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={s.saree.imageUrl} alt={s.saree.name} className="h-12 w-12 rounded-md object-cover" />
+                    <ExpandableImage src={s.saree.imageUrl} alt={s.saree.name} className="h-12 w-12 rounded-md object-cover" />
                   ) : (
                     <div className="flex h-12 w-12 items-center justify-center rounded-md bg-gray-100 text-[10px] text-gray-400">
                       No photo
