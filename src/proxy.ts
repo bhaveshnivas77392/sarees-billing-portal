@@ -40,8 +40,11 @@ export async function proxy(request: NextRequest) {
 }
 
 // API routes handle their own auth (session checks in server actions, header checks for
-// admin endpoints) rather than being redirected to /login like page navigations.
+// admin endpoints) rather than being redirected to /login like page navigations. Static
+// assets (anything with a file extension - icons, manifest.json, images) are excluded
+// wholesale rather than by name, since a request for e.g. /saree-logo.png on the
+// unauthenticated login page would otherwise get redirected to /login instead of the image.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|api/).*)"],
+  matcher: ["/((?!_next/static|_next/image|api/|.*\\..*).*)"],
 };
 // END GENAI
