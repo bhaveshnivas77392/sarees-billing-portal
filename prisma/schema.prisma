@@ -1,0 +1,139 @@
+// START GENAI
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum StockMovementType {
+  PURCHASE_IN
+  SALE_OUT
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT
+}
+
+model Branch {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  users          User[]
+  stocks         Stock[]
+  stockMovements StockMovement[]
+  sales          Sale[]
+
+  @@map("branches")
+}
+
+/// Mirrors a Supabase Auth user (id = auth.users.id). branchId is null for OWNER, who sees all branches.
+model User {
+  id        String   @id
+  email     String   @unique
+  name      String
+  role      Role
+  branchId  String?  @map("branch_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  branch         Branch?         @relation(fields: [branchId], references: [id])
+  stockMovements StockMovement[]
+  sales          Sale[]
+
+  @@map("users")
+}
+
+model Saree {
+  id           String   @id @default(uuid())
+  sku          String   @unique
+  name         String
+  fabric       String?
+  color        String?
+  category     String?
+  costPrice    Decimal  @map("cost_price") @db.Decimal(10, 2)
+  sellingPrice Decimal  @map("selling_price") @db.Decimal(10, 2)
+  imageUrl     String?  @map("image_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  stocks         Stock[]
+  stockMovements StockMovement[]
+  saleItems      SaleItem[]
+
+  @@map("sarees")
+}
+
+/// One row per saree+branch holding the current on-hand quantity.
+model Stock {
+  id        String   @id @default(uuid())
+  sareeId   String   @map("saree_id")
+  branchId  String   @map("branch_id")
+  quantity  Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  saree  Saree  @relation(fields: [sareeId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([sareeId, branchId])
+  @@map("stocks")
+}
+
+/// Append-only audit trail; Stock.quantity is always derivable by summing these, so it can never silently drift.
+model StockMovement {
+  id        String            @id @default(uuid())
+  sareeId   String            @map("saree_id")
+  branchId  String            @map("branch_id")
+  type      StockMovementType
+  quantity  Int
+  note      String?
+  createdAt DateTime          @default(now()) @map("created_at")
+  createdBy String            @map("created_by")
+
+  saree  Saree  @relation(fields: [sareeId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+  user   User   @relation(fields: [createdBy], references: [id])
+
+  @@map("stock_movements")
+}
+
+model Sale {
+  id            String   @id @default(uuid())
+  branchId      String   @map("branch_id")
+  cashierId     String   @map("cashier_id")
+  customerName  String?  @map("customer_name")
+  customerPhone String?  @map("customer_phone")
+  discount      Decimal  @default(0) @db.Decimal(10, 2)
+  totalAmount   Decimal  @map("total_amount") @db.Decimal(10, 2)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  branch  Branch     @relation(fields: [branchId], references: [id])
+  cashier User       @relation(fields: [cashierId], references: [id])
+  items   SaleItem[]
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String  @id @default(uuid())
+  saleId    String  @map("sale_id")
+  sareeId   String  @map("saree_id")
+  quantity  Int
+  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2)
+  lineTotal Decimal @map("line_total") @db.Decimal(10, 2)
+
+  sale  Sale  @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saree Saree @relation(fields: [sareeId], references: [id])
+
+  @@map("sale_items")
+}
+
+// END GENAI
