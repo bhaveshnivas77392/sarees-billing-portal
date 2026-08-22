@@ -2,6 +2,7 @@
 // TEMPORARY one-time setup endpoint - pushes schema + seed data to a fresh Supabase
 // project from Vercel's network (works around a local network that can't reach Postgres
 // directly). Protected by ADMIN_SETUP_SECRET. Delete this route once setup is done.
+import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
@@ -99,7 +100,10 @@ const REALTIME_SQL = [
 ];
 
 const BRANCH_NAMES = ["Branch 1", "Branch 2", "Branch 3"];
-const SEED_PASSWORD = "ChangeMe123!";
+
+function randomPassword() {
+  return randomBytes(12).toString("base64url");
+}
 
 export async function POST(request: Request) {
   const secret = process.env.ADMIN_SETUP_SECRET;
@@ -131,9 +135,10 @@ export async function POST(request: Request) {
   );
 
   async function upsertUser(email: string, name: string, role: string, branchId: string | null) {
+    const password = randomPassword();
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email,
-      password: SEED_PASSWORD,
+      password,
       email_confirm: true,
       app_metadata: { role, branchId },
     });
@@ -149,7 +154,8 @@ export async function POST(request: Request) {
       update: { name, role: role as never, branchId },
       create: { id: authUser.id, email, name, role: role as never, branchId },
     });
-    return email;
+    // Only ever returned in this one-time HTTP response - never logged or stored.
+    return { email, password: created ? password : "(already existed - password unchanged)" };
   }
 
   const branches = [];
@@ -164,8 +170,7 @@ export async function POST(request: Request) {
     logins.push(await upsertUser(`manager.${slug}@shop.test`, `${branch.name} Manager`, "MANAGER", branch.id));
     logins.push(await upsertUser(`staff.${slug}@shop.test`, `${branch.name} Staff`, "STAFF", branch.id));
   }
-  log.push(`Created logins (password "${SEED_PASSWORD}"): ${logins.join(", ")}`);
 
-  return NextResponse.json({ ok: true, log });
+  return NextResponse.json({ ok: true, log, logins });
 }
 // END GENAI

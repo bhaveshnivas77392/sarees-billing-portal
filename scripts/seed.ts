@@ -6,8 +6,13 @@
  *
  * Run once against a fresh Supabase project: npm run seed
  */
+import { randomBytes } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
+
+function randomPassword() {
+  return randomBytes(12).toString("base64url");
+}
 
 const prisma = new PrismaClient();
 
@@ -23,7 +28,8 @@ const BRANCHES = [
   { name: "Branch 3", address: "" },
 ];
 
-async function upsertAuthUser(email: string, password: string, name: string, role: string, branchId: string | null) {
+async function upsertAuthUser(email: string, name: string, role: string, branchId: string | null) {
+  const password = randomPassword();
   const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
@@ -47,7 +53,8 @@ async function upsertAuthUser(email: string, password: string, name: string, rol
     create: { id: authUser.id, email, name, role: role as never, branchId },
   });
 
-  console.log(`✓ ${role.padEnd(7)} ${email} (password: ${password})`);
+  const passwordNote = created ? password : "(already existed - password unchanged)";
+  console.log(`✓ ${role.padEnd(7)} ${email} (password: ${passwordNote})`);
 }
 
 async function main() {
@@ -57,12 +64,12 @@ async function main() {
     branches.push(existing ?? (await prisma.branch.create({ data: b })));
   }
 
-  await upsertAuthUser("owner@shop.test", "ChangeMe123!", "Shop Owner", "OWNER", null);
+  await upsertAuthUser("owner@shop.test", "Shop Owner", "OWNER", null);
 
   for (const branch of branches) {
     const slug = branch.name.toLowerCase().replace(/\s+/g, "");
-    await upsertAuthUser(`manager.${slug}@shop.test`, "ChangeMe123!", `${branch.name} Manager`, "MANAGER", branch.id);
-    await upsertAuthUser(`staff.${slug}@shop.test`, "ChangeMe123!", `${branch.name} Staff`, "STAFF", branch.id);
+    await upsertAuthUser(`manager.${slug}@shop.test`, `${branch.name} Manager`, "MANAGER", branch.id);
+    await upsertAuthUser(`staff.${slug}@shop.test`, `${branch.name} Staff`, "STAFF", branch.id);
   }
 
   console.log("\nSeed complete. Change these passwords after first login.");
