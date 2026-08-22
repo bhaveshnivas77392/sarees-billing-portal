@@ -6,8 +6,23 @@ import { useRouter } from "next/navigation";
 import { checkout } from "@/lib/actions/billing";
 import { BarcodeCameraScanner } from "@/components/BarcodeCameraScanner";
 
-type CatalogItem = { sareeId: string; sku: string; name: string; price: number; available: number };
-type CartLine = { sareeId: string; name: string; sku: string; price: number; quantity: number; available: number };
+type CatalogItem = {
+  sareeId: string;
+  sku: string;
+  name: string;
+  price: number;
+  available: number;
+  imageUrl: string | null;
+};
+type CartLine = {
+  sareeId: string;
+  name: string;
+  sku: string;
+  price: number;
+  quantity: number;
+  available: number;
+  imageUrl: string | null;
+};
 
 export function SaleCart({ branchId, catalog }: { branchId: string; catalog: CatalogItem[] }) {
   const router = useRouter();
@@ -46,7 +61,15 @@ export function SaleCart({ branchId, catalog }: { branchId: string; catalog: Cat
       }
       return [
         ...prev,
-        { sareeId: item.sareeId, name: item.name, sku: item.sku, price: item.price, quantity: 1, available: item.available },
+        {
+          sareeId: item.sareeId,
+          name: item.name,
+          sku: item.sku,
+          price: item.price,
+          quantity: 1,
+          available: item.available,
+          imageUrl: item.imageUrl,
+        },
       ];
     });
   }
@@ -126,6 +149,7 @@ export function SaleCart({ branchId, catalog }: { branchId: string; catalog: Cat
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
               <tr>
+                <th className="px-4 py-2"></th>
                 <th className="px-4 py-2">Saree</th>
                 <th className="px-4 py-2">Price</th>
                 <th className="px-4 py-2">Qty</th>
@@ -136,6 +160,16 @@ export function SaleCart({ branchId, catalog }: { branchId: string; catalog: Cat
             <tbody className="divide-y">
               {cart.map((l) => (
                 <tr key={l.sareeId}>
+                  <td className="px-4 py-2">
+                    {l.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={l.imageUrl} alt={l.name} className="h-12 w-12 rounded-md object-cover" />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-md bg-gray-100 text-[10px] text-gray-400">
+                        No photo
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-2">{l.name}</td>
                   <td className="px-4 py-2">₹{l.price.toFixed(2)}</td>
                   <td className="px-4 py-2">
@@ -161,7 +195,7 @@ export function SaleCart({ branchId, catalog }: { branchId: string; catalog: Cat
               ))}
               {cart.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                     Scan a saree&apos;s barcode to add it to the bill.
                   </td>
                 </tr>

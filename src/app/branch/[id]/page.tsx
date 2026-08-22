@@ -51,6 +51,7 @@ export default async function BranchStockPage({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
             <tr>
+              <th className="px-4 py-2"></th>
               <th className="px-4 py-2">Saree</th>
               <th className="px-4 py-2">SKU</th>
               <th className="px-4 py-2">Price</th>
@@ -61,6 +62,16 @@ export default async function BranchStockPage({
           <tbody className="divide-y">
             {stocks.map((s) => (
               <tr key={s.id} className={s.quantity <= LOW_STOCK_THRESHOLD ? "bg-amber-50" : ""}>
+                <td className="px-4 py-2">
+                  {s.saree.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.saree.imageUrl} alt={s.saree.name} className="h-12 w-12 rounded-md object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-md bg-gray-100 text-[10px] text-gray-400">
+                      No photo
+                    </div>
+                  )}
+                </td>
                 <td className="px-4 py-2">
                   <div className="font-medium text-gray-900">{s.saree.name}</div>
                   <div className="text-xs text-gray-500">
@@ -89,7 +100,7 @@ export default async function BranchStockPage({
             ))}
             {stocks.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                   No sarees found. Use &ldquo;Add Stock&rdquo; to get started.
                 </td>
               </tr>

@@ -1,6 +1,7 @@
 // START GENAI
 import { prisma } from "@/lib/prisma";
 import { createSareeWithStock, addStockToExisting } from "@/lib/actions/inventory";
+import { ImageUploadField } from "@/components/ImageUploadField";
 
 export default async function AddStockPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: branchId } = await params;
@@ -18,6 +19,7 @@ export default async function AddStockPage({ params }: { params: Promise<{ id: s
             <Field label="Color" name="color" />
           </div>
           <Field label="Category" name="category" />
+          <ImageUploadField />
           <div className="grid grid-cols-3 gap-3">
             <Field label="Cost price" name="costPrice" type="number" step="0.01" required />
             <Field label="Selling price" name="sellingPrice" type="number" step="0.01" required />

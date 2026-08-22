@@ -16,6 +16,7 @@ export default async function SalePage({ params }: { params: Promise<{ id: strin
     name: s.saree.name,
     price: Number(s.saree.sellingPrice),
     available: s.quantity,
+    imageUrl: s.saree.imageUrl,
   }));
 
   return (

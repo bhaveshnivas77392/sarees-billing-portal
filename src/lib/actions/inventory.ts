@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { generateSku } from "@/lib/sku";
+import { uploadSareeImage } from "@/lib/supabase/storage";
 
 function assertCanEditBranch(sessionBranchId: string | null, role: string, branchId: string) {
   if (role !== "OWNER" && sessionBranchId !== branchId) {
@@ -33,8 +34,11 @@ export async function createSareeWithStock(formData: FormData) {
     throw new Error("Missing or invalid saree details");
   }
 
+  const imageFile = formData.get("image");
+  const imageUrl = await uploadSareeImage(imageFile instanceof File ? imageFile : null);
+
   const saree = await prisma.saree.create({
-    data: { sku: generateSku(), name, fabric, color, category, costPrice, sellingPrice },
+    data: { sku: generateSku(), name, fabric, color, category, costPrice, sellingPrice, imageUrl },
   });
 
   await prisma.$transaction([

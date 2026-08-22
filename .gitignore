@@ -35,6 +35,9 @@ yarn-error.log*
 !.env.example
 github.env
 
+# local source assets already processed into public/
+/fashion-saree-logo.png
+
 # vercel
 .vercel
 
