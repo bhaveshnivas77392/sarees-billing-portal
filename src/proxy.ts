@@ -39,7 +39,9 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+// API routes handle their own auth (session checks in server actions, header checks for
+// admin endpoints) rather than being redirected to /login like page navigations.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.json|icons).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|api/).*)"],
 };
 // END GENAI
