@@ -7,18 +7,25 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 
-const SCHEMA_SQL = `
-CREATE SCHEMA IF NOT EXISTS "public";
-CREATE TYPE "Role" AS ENUM ('OWNER', 'MANAGER', 'STAFF');
-CREATE TYPE "StockMovementType" AS ENUM ('PURCHASE_IN', 'SALE_OUT', 'TRANSFER_IN', 'TRANSFER_OUT', 'ADJUSTMENT');
-CREATE TABLE "branches" (
+// Every statement is individually skip-if-exists: CREATE TABLE/INDEX use IF NOT EXISTS
+// natively, CREATE TYPE and ADD CONSTRAINT (which don't support that) are wrapped in a
+// DO block that swallows "already exists". Non-destructive and safe to re-run.
+function skipIfExists(statement: string) {
+  return `DO $$ BEGIN ${statement}; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`;
+}
+
+const SCHEMA_STATEMENTS = [
+  `CREATE SCHEMA IF NOT EXISTS "public"`,
+  skipIfExists(`CREATE TYPE "Role" AS ENUM ('OWNER', 'MANAGER', 'STAFF')`),
+  skipIfExists(`CREATE TYPE "StockMovementType" AS ENUM ('PURCHASE_IN', 'SALE_OUT', 'TRANSFER_IN', 'TRANSFER_OUT', 'ADJUSTMENT')`),
+  `CREATE TABLE IF NOT EXISTS "branches" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "address" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "branches_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE "users" (
+  )`,
+  `CREATE TABLE IF NOT EXISTS "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -26,8 +33,8 @@ CREATE TABLE "users" (
     "branch_id" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE "sarees" (
+  )`,
+  `CREATE TABLE IF NOT EXISTS "sarees" (
     "id" TEXT NOT NULL,
     "sku" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -39,16 +46,16 @@ CREATE TABLE "sarees" (
     "image_url" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "sarees_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE "stocks" (
+  )`,
+  `CREATE TABLE IF NOT EXISTS "stocks" (
     "id" TEXT NOT NULL,
     "saree_id" TEXT NOT NULL,
     "branch_id" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL DEFAULT 0,
     "updated_at" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "stocks_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE "stock_movements" (
+  )`,
+  `CREATE TABLE IF NOT EXISTS "stock_movements" (
     "id" TEXT NOT NULL,
     "saree_id" TEXT NOT NULL,
     "branch_id" TEXT NOT NULL,
@@ -58,8 +65,8 @@ CREATE TABLE "stock_movements" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "created_by" TEXT NOT NULL,
     CONSTRAINT "stock_movements_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE "sales" (
+  )`,
+  `CREATE TABLE IF NOT EXISTS "sales" (
     "id" TEXT NOT NULL,
     "branch_id" TEXT NOT NULL,
     "cashier_id" TEXT NOT NULL,
@@ -69,8 +76,8 @@ CREATE TABLE "sales" (
     "total_amount" DECIMAL(10,2) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "sales_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE "sale_items" (
+  )`,
+  `CREATE TABLE IF NOT EXISTS "sale_items" (
     "id" TEXT NOT NULL,
     "sale_id" TEXT NOT NULL,
     "saree_id" TEXT NOT NULL,
@@ -78,21 +85,21 @@ CREATE TABLE "sale_items" (
     "unit_price" DECIMAL(10,2) NOT NULL,
     "line_total" DECIMAL(10,2) NOT NULL,
     CONSTRAINT "sale_items_pkey" PRIMARY KEY ("id")
-);
-CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
-CREATE UNIQUE INDEX "sarees_sku_key" ON "sarees"("sku");
-CREATE UNIQUE INDEX "stocks_saree_id_branch_id_key" ON "stocks"("saree_id", "branch_id");
-ALTER TABLE "users" ADD CONSTRAINT "users_branch_id_fkey" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "stocks" ADD CONSTRAINT "stocks_saree_id_fkey" FOREIGN KEY ("saree_id") REFERENCES "sarees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "stocks" ADD CONSTRAINT "stocks_branch_id_fkey" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_saree_id_fkey" FOREIGN KEY ("saree_id") REFERENCES "sarees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_branch_id_fkey" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "sales" ADD CONSTRAINT "sales_branch_id_fkey" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "sales" ADD CONSTRAINT "sales_cashier_id_fkey" FOREIGN KEY ("cashier_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "sale_items" ADD CONSTRAINT "sale_items_sale_id_fkey" FOREIGN KEY ("sale_id") REFERENCES "sales"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "sale_items" ADD CONSTRAINT "sale_items_saree_id_fkey" FOREIGN KEY ("saree_id") REFERENCES "sarees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-`;
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "sarees_sku_key" ON "sarees"("sku")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "stocks_saree_id_branch_id_key" ON "stocks"("saree_id", "branch_id")`,
+  skipIfExists(`ALTER TABLE "users" ADD CONSTRAINT "users_branch_id_fkey" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE SET NULL ON UPDATE CASCADE`),
+  skipIfExists(`ALTER TABLE "stocks" ADD CONSTRAINT "stocks_saree_id_fkey" FOREIGN KEY ("saree_id") REFERENCES "sarees"("id") ON DELETE RESTRICT ON UPDATE CASCADE`),
+  skipIfExists(`ALTER TABLE "stocks" ADD CONSTRAINT "stocks_branch_id_fkey" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE RESTRICT ON UPDATE CASCADE`),
+  skipIfExists(`ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_saree_id_fkey" FOREIGN KEY ("saree_id") REFERENCES "sarees"("id") ON DELETE RESTRICT ON UPDATE CASCADE`),
+  skipIfExists(`ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_branch_id_fkey" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE RESTRICT ON UPDATE CASCADE`),
+  skipIfExists(`ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE`),
+  skipIfExists(`ALTER TABLE "sales" ADD CONSTRAINT "sales_branch_id_fkey" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE RESTRICT ON UPDATE CASCADE`),
+  skipIfExists(`ALTER TABLE "sales" ADD CONSTRAINT "sales_cashier_id_fkey" FOREIGN KEY ("cashier_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE`),
+  skipIfExists(`ALTER TABLE "sale_items" ADD CONSTRAINT "sale_items_sale_id_fkey" FOREIGN KEY ("sale_id") REFERENCES "sales"("id") ON DELETE CASCADE ON UPDATE CASCADE`),
+  skipIfExists(`ALTER TABLE "sale_items" ADD CONSTRAINT "sale_items_saree_id_fkey" FOREIGN KEY ("saree_id") REFERENCES "sarees"("id") ON DELETE RESTRICT ON UPDATE CASCADE`),
+];
 
 const REALTIME_SQL = [
   `alter publication supabase_realtime add table stocks;`,
@@ -114,10 +121,10 @@ export async function POST(request: Request) {
 
   const log: string[] = [];
 
-  for (const statement of SCHEMA_SQL.split(";").map((s) => s.trim()).filter(Boolean)) {
+  for (const statement of SCHEMA_STATEMENTS) {
     await prisma.$executeRawUnsafe(statement);
   }
-  log.push("Schema created");
+  log.push("Schema created (or already existed)");
 
   for (const statement of REALTIME_SQL) {
     try {
@@ -160,9 +167,10 @@ export async function POST(request: Request) {
 
   const branches = [];
   for (const name of BRANCH_NAMES) {
-    branches.push(await prisma.branch.create({ data: { name } }));
+    const existing = await prisma.branch.findFirst({ where: { name } });
+    branches.push(existing ?? (await prisma.branch.create({ data: { name } })));
   }
-  log.push(`Created branches: ${branches.map((b) => b.name).join(", ")}`);
+  log.push(`Branches ready: ${branches.map((b) => b.name).join(", ")}`);
 
   const logins = [await upsertUser("owner@shop.test", "Shop Owner", "OWNER", null)];
   for (const branch of branches) {
