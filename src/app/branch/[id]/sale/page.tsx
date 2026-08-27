@@ -5,22 +5,24 @@ import { SaleCart } from "@/components/SaleCart";
 export default async function SalePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: branchId } = await params;
 
-  const stocks = await prisma.stock.findMany({
-    where: { branchId, quantity: { gt: 0 } },
-    include: { saree: true },
-    orderBy: { saree: { name: "asc" } },
+  // Show every saree design (across all branches), not just this branch's positive-stock
+  // subset - staff can browse the full catalog and pick visually. available reflects only
+  // this branch's stock, so 0-stock-here items still show but can't actually be sold here.
+  const sarees = await prisma.saree.findMany({
+    include: { stocks: { where: { branchId } } },
+    orderBy: { name: "asc" },
   });
 
-  const catalog = stocks.map((s) => ({
-    sareeId: s.sareeId,
-    sku: s.saree.sku,
-    name: s.saree.name,
-    fabric: s.saree.fabric,
-    color: s.saree.color,
-    category: s.saree.category,
-    price: Number(s.saree.sellingPrice),
-    available: s.quantity,
-    imageUrl: s.saree.imageUrl,
+  const catalog = sarees.map((s) => ({
+    sareeId: s.id,
+    sku: s.sku,
+    name: s.name,
+    fabric: s.fabric,
+    color: s.color,
+    category: s.category,
+    price: Number(s.sellingPrice),
+    available: s.stocks[0]?.quantity ?? 0,
+    imageUrl: s.imageUrl,
   }));
 
   return (

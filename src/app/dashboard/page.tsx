@@ -183,9 +183,10 @@ export default async function DashboardPage({
             ({ branch, totalUnits, stockValue, lowStockCount, salesTotal, salesCount }, i) => {
               const accent = ACCENTS[i % ACCENTS.length];
               return (
-                <div
+                <Link
                   key={branch.id}
-                  className={`rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xs transition hover:shadow-md ${accent.border} border-t-4 flex flex-col justify-between`}
+                  href={`/branch/${branch.id}`}
+                  className={`group rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xs transition hover:shadow-md hover:-translate-y-0.5 ${accent.border} border-t-4 flex flex-col justify-between`}
                 >
                   <div>
                     <div className="mb-4 flex items-center justify-between">
@@ -225,14 +226,11 @@ export default async function DashboardPage({
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2">
-                    <Link
-                      href={`/branch/${branch.id}`}
-                      className="flex-1 text-center rounded-xl bg-slate-50 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 hover:text-rose-800"
-                    >
+                    <span className="flex-1 text-center rounded-xl bg-slate-50 py-2 text-xs font-semibold text-rose-700 transition group-hover:bg-rose-50">
                       Open POS →
-                    </Link>
+                    </span>
                   </div>
-                </div>
+                </Link>
               );
             },
           )}
