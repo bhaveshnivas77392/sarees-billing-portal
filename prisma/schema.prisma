@@ -20,7 +20,15 @@ enum StockMovementType {
   SALE_OUT
   TRANSFER_IN
   TRANSFER_OUT
+  RETURN_IN
   ADJUSTMENT
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  CARD
+  SPLIT
 }
 
 model Branch {
@@ -33,6 +41,10 @@ model Branch {
   stocks         Stock[]
   stockMovements StockMovement[]
   sales          Sale[]
+  transfersOut   TransferRequest[] @relation("TransfersOut")
+  transfersIn    TransferRequest[] @relation("TransfersIn")
+  returns        ReturnRecord[]
+  dayClosures    DayClosure[]
 
   @@map("branches")
 }
@@ -46,9 +58,12 @@ model User {
   branchId  String?  @map("branch_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  branch         Branch?         @relation(fields: [branchId], references: [id])
+  branch         Branch?           @relation(fields: [branchId], references: [id])
   stockMovements StockMovement[]
   sales          Sale[]
+  transfers      TransferRequest[]
+  processedReturns ReturnRecord[]
+  dayClosures    DayClosure[]
 
   @@map("users")
 }
@@ -65,9 +80,11 @@ model Saree {
   imageUrl     String?  @map("image_url")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  stocks         Stock[]
-  stockMovements StockMovement[]
-  saleItems      SaleItem[]
+  stocks           Stock[]
+  stockMovements   StockMovement[]
+  saleItems        SaleItem[]
+  transferRequests TransferRequest[]
+  returnItems      ReturnItem[]
 
   @@map("sarees")
 }
@@ -106,18 +123,24 @@ model StockMovement {
 }
 
 model Sale {
-  id            String   @id @default(uuid())
-  branchId      String   @map("branch_id")
-  cashierId     String   @map("cashier_id")
-  customerName  String?  @map("customer_name")
-  customerPhone String?  @map("customer_phone")
-  discount      Decimal  @default(0) @db.Decimal(10, 2)
-  totalAmount   Decimal  @map("total_amount") @db.Decimal(10, 2)
-  createdAt     DateTime @default(now()) @map("created_at")
+  id            String      @id @default(uuid())
+  branchId      String      @map("branch_id")
+  cashierId     String      @map("cashier_id")
+  customerName  String?     @map("customer_name")
+  customerPhone String?     @map("customer_phone")
+  paymentMode   PaymentMode @default(CASH) @map("payment_mode")
+  cashPaid      Decimal?    @map("cash_paid") @db.Decimal(10, 2)
+  upiPaid       Decimal?    @map("upi_paid") @db.Decimal(10, 2)
+  cardPaid      Decimal?    @map("card_paid") @db.Decimal(10, 2)
+  upiReference  String?     @map("upi_reference")
+  discount      Decimal     @default(0) @db.Decimal(10, 2)
+  totalAmount   Decimal     @map("total_amount") @db.Decimal(10, 2)
+  createdAt     DateTime    @default(now()) @map("created_at")
 
-  branch  Branch     @relation(fields: [branchId], references: [id])
-  cashier User       @relation(fields: [cashierId], references: [id])
+  branch  Branch         @relation(fields: [branchId], references: [id])
+  cashier User           @relation(fields: [cashierId], references: [id])
   items   SaleItem[]
+  returns ReturnRecord[]
 
   @@map("sales")
 }
@@ -136,4 +159,71 @@ model SaleItem {
   @@map("sale_items")
 }
 
+model TransferRequest {
+  id             String   @id @default(uuid())
+  sourceBranchId String   @map("source_branch_id")
+  targetBranchId String   @map("target_branch_id")
+  sareeId        String   @map("saree_id")
+  quantity       Int
+  note           String?
+  createdById    String   @map("created_by_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  sourceBranch Branch @relation("TransfersOut", fields: [sourceBranchId], references: [id])
+  targetBranch Branch @relation("TransfersIn", fields: [targetBranchId], references: [id])
+  saree        Saree  @relation(fields: [sareeId], references: [id])
+  createdBy    User   @relation(fields: [createdById], references: [id])
+
+  @@map("transfer_requests")
+}
+
+model ReturnRecord {
+  id           String       @id @default(uuid())
+  saleId       String       @map("sale_id")
+  branchId     String       @map("branch_id")
+  processedById String      @map("processed_by_id")
+  refundAmount Decimal      @map("refund_amount") @db.Decimal(10, 2)
+  reason       String?
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  sale         Sale         @relation(fields: [saleId], references: [id])
+  branch       Branch       @relation(fields: [branchId], references: [id])
+  processedBy  User         @relation(fields: [processedById], references: [id])
+  items        ReturnItem[]
+
+  @@map("return_records")
+}
+
+model ReturnItem {
+  id             String       @id @default(uuid())
+  returnRecordId String       @map("return_record_id")
+  sareeId        String       @map("saree_id")
+  quantity       Int
+  refundAmount   Decimal      @map("refund_amount") @db.Decimal(10, 2)
+
+  returnRecord   ReturnRecord @relation(fields: [returnRecordId], references: [id], onDelete: Cascade)
+  saree          Saree        @relation(fields: [sareeId], references: [id])
+
+  @@map("return_items")
+}
+
+model DayClosure {
+  id             String   @id @default(uuid())
+  branchId       String   @map("branch_id")
+  closedById     String   @map("closed_by_id")
+  date           DateTime @default(now())
+  totalSales     Decimal  @map("total_sales") @db.Decimal(10, 2)
+  cashSales      Decimal  @map("cash_sales") @db.Decimal(10, 2)
+  upiSales       Decimal  @map("upi_sales") @db.Decimal(10, 2)
+  cardSales      Decimal  @map("card_sales") @db.Decimal(10, 2)
+  actualCashInDrawer Decimal @map("actual_cash_in_drawer") @db.Decimal(10, 2)
+  discrepancy    Decimal  @map("discrepancy") @db.Decimal(10, 2)
+  note           String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  branch         Branch   @relation(fields: [branchId], references: [id])
+  closedBy       User     @relation(fields: [closedById], references: [id])
+
+  @@map("day_closures")
+}
 // END GENAI

@@ -3,22 +3,67 @@
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { PaymentMode } from "@prisma/client";
 
 export type CartLine = { sareeId: string; quantity: number };
+
+export type CheckoutInput = {
+  branchId: string;
+  cart: CartLine[];
+  discount: number;
+  customerName?: string;
+  customerPhone?: string;
+  paymentMode: PaymentMode;
+  cashPaid?: number;
+  upiPaid?: number;
+  cardPaid?: number;
+  upiReference?: string;
+};
 
 export type CheckoutResult =
   | { ok: true; saleId: string }
   | { ok: false; error: string };
 
 export async function checkout(
-  branchId: string,
-  cart: CartLine[],
-  discount: number,
-  customerName: string,
-  customerPhone: string,
+  branchIdOrInput: string | CheckoutInput,
+  maybeCart?: CartLine[],
+  maybeDiscount?: number,
+  maybeCustomerName?: string,
+  maybeCustomerPhone?: string,
 ): Promise<CheckoutResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Not signed in" };
+
+  let branchId: string;
+  let cart: CartLine[];
+  let discount: number;
+  let customerName: string | undefined;
+  let customerPhone: string | undefined;
+  let paymentMode: PaymentMode = "CASH";
+  let cashPaid: number | undefined;
+  let upiPaid: number | undefined;
+  let cardPaid: number | undefined;
+  let upiReference: string | undefined;
+
+  if (typeof branchIdOrInput === "object") {
+    branchId = branchIdOrInput.branchId;
+    cart = branchIdOrInput.cart;
+    discount = branchIdOrInput.discount;
+    customerName = branchIdOrInput.customerName;
+    customerPhone = branchIdOrInput.customerPhone;
+    paymentMode = branchIdOrInput.paymentMode ?? "CASH";
+    cashPaid = branchIdOrInput.cashPaid;
+    upiPaid = branchIdOrInput.upiPaid;
+    cardPaid = branchIdOrInput.cardPaid;
+    upiReference = branchIdOrInput.upiReference;
+  } else {
+    branchId = branchIdOrInput;
+    cart = maybeCart ?? [];
+    discount = maybeDiscount ?? 0;
+    customerName = maybeCustomerName;
+    customerPhone = maybeCustomerPhone;
+  }
+
   if (session.role !== "OWNER" && session.branchId !== branchId) {
     return { ok: false, error: "Not authorized for this branch" };
   }
@@ -38,8 +83,6 @@ export async function checkout(
         const saree = sareeById.get(line.sareeId);
         if (!saree) throw new Error(`Unknown saree ${line.sareeId}`);
 
-        // Guard the decrement itself (rather than check-then-write) so two simultaneous
-        // scans of the last unit can't both succeed and push quantity negative.
         const decremented = await tx.stock.updateMany({
           where: { sareeId: line.sareeId, branchId, quantity: { gte: line.quantity } },
           data: { quantity: { decrement: line.quantity } },
@@ -72,6 +115,11 @@ export async function checkout(
           cashierId: session.id,
           customerName: customerName || null,
           customerPhone: customerPhone || null,
+          paymentMode,
+          cashPaid: cashPaid ?? (paymentMode === "CASH" ? finalTotal : null),
+          upiPaid: upiPaid ?? (paymentMode === "UPI" ? finalTotal : null),
+          cardPaid: cardPaid ?? (paymentMode === "CARD" ? finalTotal : null),
+          upiReference: upiReference || null,
           discount,
           totalAmount: finalTotal,
           items: { create: lineData },
