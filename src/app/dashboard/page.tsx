@@ -2,18 +2,35 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { RealtimeRefresher } from "@/components/RealtimeRefresher";
+import { IconBox, IconStore, IconAlert, IconSparkles, IconCart, IconShare } from "@/components/Icons";
 
 const ACCENTS = [
-  { border: "border-t-rose-500", chip: "bg-rose-100 text-rose-700" },
-  { border: "border-t-amber-500", chip: "bg-amber-100 text-amber-700" },
-  { border: "border-t-emerald-500", chip: "bg-emerald-100 text-emerald-700" },
+  { border: "border-t-rose-500", chip: "bg-rose-50 text-rose-700", badge: "bg-rose-100 text-rose-800" },
+  { border: "border-t-amber-500", chip: "bg-amber-50 text-amber-700", badge: "bg-amber-100 text-amber-800" },
+  { border: "border-t-emerald-500", chip: "bg-emerald-50 text-emerald-700", badge: "bg-emerald-100 text-emerald-800" },
 ];
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const { range = "today" } = await searchParams;
   const branches = await prisma.branch.findMany({ orderBy: { name: "asc" } });
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+  let startDate: Date | undefined;
+  const now = new Date();
+
+  if (range === "today") {
+    startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+  } else if (range === "week") {
+    startDate = new Date();
+    startDate.setDate(now.getDate() - 7);
+  } else if (range === "month") {
+    startDate = new Date();
+    startDate.setMonth(now.getMonth() - 1);
+  }
 
   const branchSummaries = await Promise.all(
     branches.map(async (branch) => {
@@ -29,8 +46,8 @@ export default async function DashboardPage() {
       );
       const lowStockCount = stocks.filter((s) => s.quantity <= 3).length;
 
-      const todaySales = await prisma.sale.aggregate({
-        where: { branchId: branch.id, createdAt: { gte: startOfToday } },
+      const salesAgg = await prisma.sale.aggregate({
+        where: { branchId: branch.id, ...(startDate ? { createdAt: { gte: startDate } } : {}) },
         _sum: { totalAmount: true },
         _count: true,
       });
@@ -40,8 +57,8 @@ export default async function DashboardPage() {
         totalUnits,
         stockValue,
         lowStockCount,
-        todaySalesTotal: Number(todaySales._sum.totalAmount ?? 0),
-        todaySalesCount: todaySales._count,
+        salesTotal: Number(salesAgg._sum.totalAmount ?? 0),
+        salesCount: salesAgg._count,
       };
     }),
   );
@@ -50,65 +67,176 @@ export default async function DashboardPage() {
     (acc, b) => ({
       units: acc.units + b.totalUnits,
       value: acc.value + b.stockValue,
-      salesTotal: acc.salesTotal + b.todaySalesTotal,
-      salesCount: acc.salesCount + b.todaySalesCount,
+      salesTotal: acc.salesTotal + b.salesTotal,
+      salesCount: acc.salesCount + b.salesCount,
       lowStock: acc.lowStock + b.lowStockCount,
     }),
     { units: 0, value: 0, salesTotal: 0, salesCount: 0, lowStock: 0 },
   );
 
-  const today = new Date().toLocaleDateString(undefined, {
+  const todayText = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
+    year: "numeric",
     month: "long",
     day: "numeric",
   });
 
   return (
-    <div>
+    <div className="space-y-6">
       <RealtimeRefresher watch={[{ table: "stocks" }, { table: "sales" }]} />
 
-      <p className="mb-6 text-gray-500">Welcome back — here&apos;s how all {branches.length} branches are doing on {today}.</p>
+      {/* Header Banner & Date Filter Bar */}
+      <div className="rounded-2xl bg-gradient-to-r from-rose-950 via-rose-900 to-amber-950 p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <span className="inline-block rounded-full bg-amber-400/20 px-3 py-1 text-xs font-semibold text-amber-200 backdrop-blur-xs mb-2">
+            Live Retail Business Intelligence
+          </span>
+          <h2 className="text-xl font-bold">Multi-Branch Performance Analytics</h2>
+          <p className="text-xs text-rose-100/80 mt-1">Live metrics across {branches.length} showroom branches · {todayText}</p>
+        </div>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile icon={<BoxIcon />} accent="bg-rose-500" label="Units in stock" value={totals.units.toLocaleString()} />
-        <StatTile icon={<CoinIcon />} accent="bg-amber-500" label="Stock value" value={`₹${totals.value.toFixed(0)}`} />
-        <StatTile icon={<CartIcon />} accent="bg-emerald-500" label="Sales today" value={`₹${totals.salesTotal.toFixed(0)}`} sub={`${totals.salesCount} bills`} />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Time Range Pills */}
+          <div className="flex rounded-xl bg-black/30 p-1 backdrop-blur-xs border border-white/10 text-xs">
+            <Link
+              href="/dashboard?range=today"
+              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                range === "today" ? "bg-rose-600 text-white font-bold" : "text-rose-200 hover:text-white"
+              }`}
+            >
+              Today
+            </Link>
+            <Link
+              href="/dashboard?range=week"
+              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                range === "week" ? "bg-rose-600 text-white font-bold" : "text-rose-200 hover:text-white"
+              }`}
+            >
+              Last 7 Days
+            </Link>
+            <Link
+              href="/dashboard?range=month"
+              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                range === "month" ? "bg-rose-600 text-white font-bold" : "text-rose-200 hover:text-white"
+              }`}
+            >
+              Last 30 Days
+            </Link>
+            <Link
+              href="/dashboard?range=all"
+              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                range === "all" ? "bg-rose-600 text-white font-bold" : "text-rose-200 hover:text-white"
+              }`}
+            >
+              All Time
+            </Link>
+          </div>
+
+          {/* Export to CSV Button */}
+          <a
+            href={`/api/export-sales?range=${range}`}
+            download
+            className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-rose-900 shadow-sm transition hover:bg-rose-50 active:scale-95 cursor-pointer"
+          >
+            <IconShare className="h-4 w-4 text-rose-700" /> Export CSV
+          </a>
+        </div>
+      </div>
+
+      {/* KPI Metric Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
-          icon={<AlertIcon />}
-          accent={totals.lowStock > 0 ? "bg-red-500" : "bg-gray-400"}
-          label="Low stock alerts"
+          icon={<IconBox className="h-5 w-5" />}
+          iconBg="bg-rose-50 text-rose-600"
+          label="Total On-Hand Stock"
+          value={`${totals.units.toLocaleString()} Units`}
+          sub={`${branches.length} active branches`}
+        />
+        <StatTile
+          icon={<IconSparkles className="h-5 w-5" />}
+          iconBg="bg-amber-50 text-amber-600"
+          label="Total Stock Value"
+          value={`₹${totals.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+          sub="At purchase cost"
+        />
+        <StatTile
+          icon={<IconCart className="h-5 w-5" />}
+          iconBg="bg-emerald-50 text-emerald-600"
+          label={`${range === "today" ? "Today's" : "Period"} Sales Revenue`}
+          value={`₹${totals.salesTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+          sub={`${totals.salesCount} bills completed`}
+        />
+        <StatTile
+          icon={<IconAlert className="h-5 w-5" />}
+          iconBg={totals.lowStock > 0 ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-500"}
+          label="Low Stock Warnings"
           value={totals.lowStock}
+          sub={totals.lowStock > 0 ? "Needs urgent replenishment" : "Inventory levels healthy"}
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {branchSummaries.map(({ branch, totalUnits, stockValue, lowStockCount, todaySalesTotal, todaySalesCount }, i) => {
-          const accent = ACCENTS[i % ACCENTS.length];
-          return (
-            <div
-              key={branch.id}
-              className={`rounded-lg border border-t-4 bg-white p-5 shadow-sm transition hover:shadow-md ${accent.border}`}
-            >
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`flex h-8 w-8 items-center justify-center rounded-full ${accent.chip}`}>
-                    <StoreIcon />
-                  </span>
-                  <h2 className="font-semibold text-gray-900">{branch.name}</h2>
+      {/* Branch Breakdown Grid */}
+      <div>
+        <h3 className="text-base font-bold text-gray-900 mb-3">Branch-wise Performance</h3>
+        <div className="grid gap-4 md:grid-cols-3">
+          {branchSummaries.map(
+            ({ branch, totalUnits, stockValue, lowStockCount, salesTotal, salesCount }, i) => {
+              const accent = ACCENTS[i % ACCENTS.length];
+              return (
+                <div
+                  key={branch.id}
+                  className={`rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xs transition hover:shadow-md ${accent.border} border-t-4 flex flex-col justify-between`}
+                >
+                  <div>
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${accent.chip}`}>
+                          <IconStore className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-sm">{branch.name}</h4>
+                          <span className="text-[10px] text-gray-400 font-mono">ID: {branch.id.slice(0, 6)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <dl className="space-y-2 text-xs divide-y divide-gray-50">
+                      <div className="pt-2 flex justify-between">
+                        <dt className="text-gray-500">Units in Stock</dt>
+                        <dd className="font-bold text-gray-900">{totalUnits}</dd>
+                      </div>
+                      <div className="pt-2 flex justify-between">
+                        <dt className="text-gray-500">Stock Value</dt>
+                        <dd className="font-bold text-gray-900">₹{stockValue.toLocaleString()}</dd>
+                      </div>
+                      <div className="pt-2 flex justify-between">
+                        <dt className="text-gray-500">Low Stock Items</dt>
+                        <dd className={`font-bold ${lowStockCount > 0 ? "text-amber-600" : "text-gray-900"}`}>
+                          {lowStockCount}
+                        </dd>
+                      </div>
+                      <div className="pt-2 flex justify-between">
+                        <dt className="text-gray-500">Sales ({range})</dt>
+                        <dd className="font-bold text-emerald-700">
+                          ₹{salesTotal.toLocaleString()} ({salesCount} bills)
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2">
+                    <Link
+                      href={`/branch/${branch.id}`}
+                      className="flex-1 text-center rounded-xl bg-slate-50 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 hover:text-rose-800"
+                    >
+                      Open POS →
+                    </Link>
+                  </div>
                 </div>
-                <Link href={`/branch/${branch.id}`} className="text-xs text-rose-600 hover:underline">
-                  Open branch →
-                </Link>
-              </div>
-              <dl className="space-y-1 text-sm">
-                <Row label="Units in stock" value={totalUnits} />
-                <Row label="Stock value" value={`₹${stockValue.toFixed(2)}`} />
-                <Row label="Low stock items" value={lowStockCount} emphasize={lowStockCount > 0} />
-                <Row label="Sales today" value={`₹${todaySalesTotal.toFixed(2)} (${todaySalesCount})`} />
-              </dl>
-            </div>
-          );
-        })}
+              );
+            },
+          )}
+        </div>
       </div>
     </div>
   );
@@ -116,74 +244,28 @@ export default async function DashboardPage() {
 
 function StatTile({
   icon,
-  accent,
+  iconBg,
   label,
   value,
   sub,
 }: {
   icon: React.ReactNode;
-  accent: string;
+  iconBg: string;
   label: string;
   value: string | number;
   sub?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-white p-4 shadow-sm">
-      <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-white ${accent}`}>
+    <div className="flex items-center gap-3.5 rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs">
+      <span className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
         {icon}
       </span>
-      <div>
-        <p className="text-xs text-gray-500">{label}</p>
-        <p className="text-xl font-semibold text-gray-900">{value}</p>
-        {sub && <p className="text-xs text-gray-400">{sub}</p>}
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium text-gray-500 truncate">{label}</p>
+        <p className="text-lg font-extrabold text-gray-900">{value}</p>
+        {sub && <p className="text-[11px] text-gray-400 truncate">{sub}</p>}
       </div>
     </div>
-  );
-}
-
-function Row({ label, value, emphasize }: { label: string; value: string | number; emphasize?: boolean }) {
-  return (
-    <div className="flex justify-between">
-      <dt className="text-gray-500">{label}</dt>
-      <dd className={emphasize ? "font-semibold text-amber-600" : "font-medium text-gray-900"}>{value}</dd>
-    </div>
-  );
-}
-
-function BoxIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-    </svg>
-  );
-}
-function CoinIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="8" strokeLinecap="round" strokeLinejoin="round" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v8m-3-3.5c0 1.1 1.34 2 3 2s3-.9 3-2-1.34-1.5-3-1.5-3-.9-3-2 1.34-2 3-2 3 .9 3 2" />
-    </svg>
-  );
-}
-function CartIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 4.6A1 1 0 005.6 19H17M9 22a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z" />
-    </svg>
-  );
-}
-function AlertIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0 3.75h.007M10.29 3.86L1.82 18a1.5 1.5 0 001.29 2.25h17.78A1.5 1.5 0 0022.18 18L13.71 3.86a1.5 1.5 0 00-2.42 0z" />
-    </svg>
-  );
-}
-function StoreIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9l1-5h16l1 5M4 9h16v10a1 1 0 01-1 1H5a1 1 0 01-1-1V9zM9 20v-6h6v6" />
-    </svg>
   );
 }
 // END GENAI
